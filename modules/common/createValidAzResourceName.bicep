@@ -21,6 +21,7 @@ param location string
   'webApp' // Web App
   'plan' // App Service Plan
   'appi' // Application Insights
+  'avd' // Azure Virtual Desktop
 ])
 param resourceType string
 param environment string
@@ -84,6 +85,11 @@ var Defs = {
     alwaysRemoveSegmentSeparator: false
   }
   mysql: {
+    lowerCase: true
+    maxLength: 63
+    alwaysRemoveSegmentSeparator: false
+  }
+  avd: {
     lowerCase: true
     maxLength: 63
     alwaysRemoveSegmentSeparator: false

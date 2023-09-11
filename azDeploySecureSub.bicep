@@ -27,6 +27,12 @@ param identityObjectId string
 @description('The address space for the virtual network. Subnets will be carved out. Minimum IPv4 size: /24')
 param vnetAddressSpace string
 
+@description('The VM SKU that will be leveraged by AVD instances.')
+param vmSku string
+
+@description('The amount of AVD instances to be deployed.')
+param countAVDInstances int
+
 var sequenceFormatted = format('{0:00}', sequence)
 var rgNamingStructure = replace(replace(replace(replace(replace(namingConvention, '{rtype}', 'rg'), '{workloadName}', '${workloadName}-{rgName}'), '{loc}', location), '{seq}', sequenceFormatted), '{env}', environment)
 var vnetName = nameModule[0].outputs.shortName
@@ -35,8 +41,12 @@ var webAppName = nameModule[2].outputs.shortName
 var kvName = nameModule[3].outputs.shortName
 var sqlName = nameModule[4].outputs.shortName
 var planName = nameModule[5].outputs.shortName
+var avdName = nameModule[6].outputs.shortName
 var sqlAdmin = 'sqladmin'
 var sqlPassword = 'P@ssw0rd' // TODO: this should be linked to Key Vault secret.
+var avdVMAdmin = 'avdAdmin'
+var avdVMPassword = 'P@ssw0rd123!'
+var customRdpProperty = 'audiocapturemode:i:1;camerastoredirect:s:*;audiomode:i:0;drivestoredirect:s:;redirectclipboard:i:1;redirectcomports:i:0;redirectprinters:i:1;redirectsmartcards:i:1;screen mode id:i:2;devicestoredirect:s:*'
 
 var subnets = {
   // TODO: Define securityRules
@@ -158,8 +168,8 @@ var workloads = [
   'kv'
   'mysql'
   'plan'
+  'avd'
 ]
-
 @batchSize(1)
 module nameModule 'modules/common/createValidAzResourceName.bicep' = [for workload in workloads: {
   name: 'nameGeneration-${workload}'
@@ -309,3 +319,32 @@ module webAppModule './modules/webapp/main.bicep' = {
 }
 
 // TODO: Consider outputting the web app URL
+
+
+module avdModule './modules/avd/main.bicep' = {
+  name: 'AVDDeploy'
+  params: {
+    customTags: {
+      workloadType: 'avd'
+    }
+    location: location
+    resourceGroupName: replace(rgNamingStructure, '{rgName}', 'avd')
+    // logworkspaceSub: logworkspaceSub
+    // logworkspaceResourceGroup: logworkspaceResourceGroup
+    // logworkspaceName: logworkspaceName
+    avdVMAdmin: avdVMAdmin
+    avdVMPassword: avdVMPassword
+    hostPoolName: '${avdName}-HP'
+    hostPoolFriendlyName: '${avdName} Host Pool'
+    hostPoolType: 'Pooled'
+    appGroupName: '${avdName}-AG'
+    appGroupFriendlyName: '${avdName} AppGrp'
+    loadBalancerType: 'DepthFirst'
+    workspaceName: '${avdName}-WS'
+    customRdpProperty: customRdpProperty
+    ComputeSubnetId: virtualNetworkModule.outputs.subnets.ComputeSubnet.id
+    countAVDInstances: countAVDInstances
+    vmSku: vmSku
+    tags: tags
+  }
+}
