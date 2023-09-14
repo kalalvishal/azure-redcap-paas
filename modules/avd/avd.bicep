@@ -56,6 +56,8 @@ param appGroupName string
 
 var configurationFileName = 'Configuration_01-19-2023.zip'
 var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().suffixes.storage}/galleryartifacts/${configurationFileName}'
+param baseTime string = utcNow('u')
+var avdRegistrationExpiriationDate = dateTimeAdd(baseTime, 'PT24H')
 
 // @description('Log Analytics workspace ID to join AVD to.')
 // param logworkspaceID string
@@ -69,7 +71,7 @@ var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().su
 // var appGroupResourceID = array(resourceId('Microsoft.DesktopVirtualization/applicationgroups/', appGroupName))
 // var applicationGroupReferencesArr = applicationGroupReferences == '' ? appGroupResourceID : concat(split(applicationGroupReferences, ','), appGroupResourceID)
 
-resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2022-10-14-preview' = if (newBuild) {
+resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2019-12-10-preview' = if (newBuild) {
   name: hostPoolName
   location: location
   properties: {
@@ -81,19 +83,13 @@ resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2022-10-14-preview'
     maxSessionLimit: maxSessionLimit
     validationEnvironment: false
     registrationInfo: {
-      expirationTime: null
+      expirationTime: avdRegistrationExpiriationDate
       token: null
-      registrationTokenOperation: 'none'
+      registrationTokenOperation: 'Update'
     }
   }
   tags: tags
 }
-
-// TODO: Remove after registrationInfoToken works
-// output registrationToken string = hostPool.properties.registrationInfo.token
-// output regToken string = reference(resourceId('Microsoft.DesktopVirtualization/hostPools', hostPool.name), '2021-07-12').registrationInfo.token
-// output regtoken2 string = hostPool.listToken()
-
 
 resource applicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@2019-12-10-preview' = if (newBuild) {
   name: appGroupName
@@ -212,8 +208,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, 
 // Needed to get the hostpool in order to pass registration info token, else it comes as null when using
 // registrationInfoToken: hostPool.properties.registrationInfo.token
 // Workaround: reference https://github.com/Azure/bicep/issues/6105
-// registrationInfoToken: reference(getHostPool.id, '2021-01-14-preview').registrationInfo.token - also does not work
-resource getHostPool 'Microsoft.DesktopVirtualization/hostPools@2021-01-14-preview' existing = {
+resource getHostPool 'Microsoft.DesktopVirtualization/hostPools@2019-12-10-preview' existing = {
   name: hostPool.name
 }
 
@@ -232,17 +227,7 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
       configurationFunction: 'Configuration.ps1\\AddSessionHost'
       properties: {
         hostPoolName: getHostPool.name
-        // registrationInfoToken: getHostPool.properties.registrationInfo.token
-        // https://github.com/Azure/bicep/issues/6105
-        // registrationInfoToken: reference(hostPool.id, '2021-01-14-preview').registrationInfo.token
-        // https://lrottach.hashnode.dev/avd-working-with-registration-tokens
-        // registrationInfoToken: reference(resourceId('Microsoft.DesktopVirtualization/hostPools', hostPool.name), '2021-07-12').registrationInfo.token
-        // registrationInfoToken: reference(resourceId('Microsoft.DesktopVirtualization/hostPools', getHostPool.name), '2021-07-12').registrationInfo.token
-        // 
-        // registrationInfoToken: hostPool.listToken()
-        // registrationInfoToken: reference(getHostPool.id).registrationInfo.token
-        // registrationInfoToken: getHostPool.properties.registrationInfo.token
-        registrationInfoToken: reference(getHostPool.id).registrationInfo.token
+        registrationInfoToken: reference(resourceId('Microsoft.DesktopVirtualization/hostPools', getHostPool.name), '2019-12-10-preview').registrationInfo.token
 
         aadJoin: false
       }
