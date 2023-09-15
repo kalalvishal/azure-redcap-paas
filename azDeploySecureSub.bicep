@@ -60,8 +60,10 @@ var webAppName = nameModule[2].outputs.shortName
 var kvName = nameModule[3].outputs.shortName
 var sqlName = nameModule[4].outputs.shortName
 var planName = nameModule[5].outputs.shortName
-var lawName = nameModule[6].outputs.shortName
-var avdName = nameModule[7].outputs.shortName
+var uamiName = nameModule[6].outputs.shortName
+var dplscrName = nameModule[7].outputs.shortName
+var lawName = nameModule[8].outputs.shortName
+var avdName = nameModule[9].outputs.shortName
 var avdVMAdmin = 'avdAdmin'
 var avdVMPassword = 'P@ssw0rd123!'
 var customRdpProperty = 'audiocapturemode:i:1;camerastoredirect:s:*;audiomode:i:0;drivestoredirect:s:;redirectclipboard:i:1;redirectcomports:i:0;redirectprinters:i:1;redirectsmartcards:i:1;screen mode id:i:2;devicestoredirect:s:*'
@@ -187,6 +189,7 @@ var secrets = [
   }
 ]
 
+// TODO: Consider renaming to resourceTypes
 var workloads = [
   'vnet'
   'st'
@@ -194,6 +197,8 @@ var workloads = [
   'kv'
   'mysql'
   'plan'
+  'uami'
+  'dplscr'
   'law'
   'avd'
 ]
@@ -323,6 +328,10 @@ module mySqlModule './modules/sql/main.bicep' = {
     mysqlVersion: '8.0.21'
     // TODO: Consider using workloadname + 'db'
     databaseName: 'redcapdb'
+
+    roles: rolesModule.outputs.roles
+    uamiName: uamiName
+    deploymentScriptName: dplscrName
 
     // Required charset and collation for REDCap
     database_charset: 'utf8'
