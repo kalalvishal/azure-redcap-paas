@@ -43,6 +43,23 @@ param sqlPassword string
 
 param sqlAdmin string = 'sqladmin'
 
+@description('The VM SKU that will be leveraged by AVD instances.')
+param vmSku string
+
+@description('The amount of AVD instances to be deployed.')
+param countAVDInstances int
+
+@description('The admin username for the session hosts')
+param avdVMAdmin string
+
+@description('The password for the AVD session hosts')
+@secure()
+param avdVMPassword string
+
+
+param AADJoin bool = true
+param intune bool = false
+
 var sequenceFormatted = format('{0:00}', sequence)
 var rgNamingStructure = replace(replace(replace(replace(replace(namingConvention, '{rtype}', 'rg'), '{workloadName}', '${workloadName}-{rgName}'), '{loc}', location), '{seq}', sequenceFormatted), '{env}', environment)
 var vnetName = nameModule[0].outputs.shortName
@@ -54,6 +71,8 @@ var planName = nameModule[5].outputs.shortName
 var uamiName = nameModule[6].outputs.shortName
 var dplscrName = nameModule[7].outputs.shortName
 var lawName = nameModule[8].outputs.shortName
+var avdName = nameModule[9].outputs.shortName
+var customRdpProperty = 'audiocapturemode:i:1;camerastoredirect:s:*;audiomode:i:0;drivestoredirect:s:;redirectclipboard:i:1;redirectcomports:i:0;redirectprinters:i:1;redirectsmartcards:i:1;screen mode id:i:2;devicestoredirect:s:*'
 
 var subnets = {
   // TODO: Define securityRules
@@ -187,8 +206,8 @@ var workloads = [
   'uami'
   'dplscr'
   'law'
+  'avd'
 ]
-
 @batchSize(1)
 module nameModule 'modules/common/createValidAzResourceName.bicep' = [for workload in workloads: {
   name: 'nameGeneration-${workload}'
@@ -357,6 +376,36 @@ module webAppModule './modules/webapp/main.bicep' = {
     redcapCommunityPassword: kvSecretReferencesModule.outputs.keyVaultRefs[5]
     // Enable VNet integration
     integrationSubnetId: virtualNetworkModule.outputs.subnets.IntegrationSubnet.id
+  }
+}
+
+module avdModule './modules/avd/main.bicep' = {
+  name: 'AVDDeploy'
+  params: {
+    customTags: {
+      workloadType: 'avd'
+    }
+    location: location
+    resourceGroupName: replace(rgNamingStructure, '{rgName}', 'avd')
+    // logworkspaceSub: logworkspaceSub
+    // logworkspaceResourceGroup: logworkspaceResourceGroup
+    // logworkspaceName: logworkspaceName
+    avdVMAdmin: avdVMAdmin
+    avdVMPassword: avdVMPassword
+    hostPoolName: '${avdName}-HP'
+    hostPoolFriendlyName: '${avdName} Host Pool'
+    hostPoolType: 'Pooled'
+    appGroupName: '${avdName}-AG'
+    appGroupFriendlyName: '${avdName} AppGrp'
+    loadBalancerType: 'DepthFirst'
+    workspaceName: '${avdName}-WS'
+    customRdpProperty: customRdpProperty
+    ComputeSubnetId: virtualNetworkModule.outputs.subnets.ComputeSubnet.id
+    countAVDInstances: countAVDInstances
+    AADJoin: AADJoin
+    intune: intune
+    vmSku: vmSku
+    tags: tags
   }
 }
 

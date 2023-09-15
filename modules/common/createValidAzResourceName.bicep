@@ -24,6 +24,7 @@ param location string
   'uami' // User-assigned Managed Identity
   'dplscr' // Deployment Script
   'law' // Log Analytics Workspace
+  'avd' // Azure Virtual Desktop
 ])
 param resourceType string
 param environment string
@@ -92,6 +93,11 @@ var Defs = {
     alwaysRemoveSegmentSeparator: false
   }
   mysql: {
+    lowerCase: true
+    maxLength: 63
+    alwaysRemoveSegmentSeparator: false
+  }
+  avd: {
     lowerCase: true
     maxLength: 63
     alwaysRemoveSegmentSeparator: false

@@ -8,6 +8,8 @@ param sequence = 1
 
 param identityObjectId = '<Valid Entra ID object ID for permissions assignment>'
 param vnetAddressSpace = '10.230.0.0/24'
+param vmSku = 'Standard_D4s_v4'
+param countAVDInstances = 1
 param redcapZipUrl = '<Valid Redcap Zip URL>'
 param redcapCommunityUsername = '<Valid Redcap Community Username>'
 param redcapCommunityPassword = '<Valid Redcap Community Password>'
@@ -16,3 +18,8 @@ param redcapCommunityPassword = '<Valid Redcap Community Password>'
 // This parameter is required to be here but should be blank so the password doesn't leak. 
 // A password is generated for each deployment.
 param sqlPassword = ''
+
+param avdVMAdmin = 'labadmin'
+param avdVMPassword = '<Valid session host password>'
+param AADJoin = true
+param intune = false
