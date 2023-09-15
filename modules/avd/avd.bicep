@@ -53,11 +53,12 @@ param workspaceName string = 'AVD-PROD'
 param appGroupFriendlyName string
 param tags object
 param appGroupName string
-
-var configurationFileName = 'Configuration_01-19-2023.zip'
-var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().suffixes.storage}/galleryartifacts/${configurationFileName}'
+param AADJoin bool
+param intune bool
 param baseTime string = utcNow('u')
 var avdRegistrationExpiriationDate = dateTimeAdd(baseTime, 'PT24H')
+var configurationFileName = 'Configuration_01-19-2023.zip'
+var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().suffixes.storage}/galleryartifacts/${configurationFileName}'
 
 // @description('Log Analytics workspace ID to join AVD to.')
 // param logworkspaceID string
@@ -156,6 +157,9 @@ resource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = [for i in range(
 resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, countAVDInstances): {
   name: 'vm-redcap-${i}'
   location: location
+  identity: AADJoin ? {
+    type: 'SystemAssigned'
+  } : null
   properties: {
     licenseType: 'Windows_Client'
     hardwareProfile: {
@@ -204,14 +208,6 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, 
   ]
 }]
 
-// Reference https://github.com/Azure/avdaccelerator/blob/e247ec5d1ba5fac0c6e9f822c4198c6b41cb77b4/workload/bicep/modules/avdSessionHosts/deploy.bicep#L162
-// Needed to get the hostpool in order to pass registration info token, else it comes as null when using
-// registrationInfoToken: hostPool.properties.registrationInfo.token
-// Workaround: reference https://github.com/Azure/bicep/issues/6105
-resource getHostPool 'Microsoft.DesktopVirtualization/hostPools@2019-12-10-preview' existing = {
-  name: hostPool.name
-}
-
 // Deploy the AVD agents to each session host
 resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = [for i in range(0, countAVDInstances): {
   name: 'AvdAgentDSC'
@@ -226,85 +222,55 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
       modulesUrl: artifactsLocation
       configurationFunction: 'Configuration.ps1\\AddSessionHost'
       properties: {
-        hostPoolName: getHostPool.name
-        registrationInfoToken: reference(resourceId('Microsoft.DesktopVirtualization/hostPools', getHostPool.name), '2019-12-10-preview').registrationInfo.token
-
+        hostPoolName: hostPool.name
+        registrationInfoToken: hostPool.properties.registrationInfo.token
         aadJoin: false
       }
     }
   }
+}]
+
+resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
+  name: 'AADJoin'
+  parent: vm[i]
+  location: location
+  properties: AADJoin ? {
+    publisher: 'Microsoft.Azure.ActiveDirectory'
+    type: 'AADLoginForWindows'
+    typeHandlerVersion: '1.0'
+    autoUpgradeMinorVersion: true
+    settings: intune ? {
+      mdmId: '0000000a-0000-0000-c000-000000000000' //https://github.com/MicrosoftDocs/azure-docs/issues/94148
+    } : null
+  } : null
   dependsOn: [
-    vm[i]
-    getHostPool
+    avdAgentDscExtension[i]
   ]
 }]
 
-// resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
-//   name: 'DomainJoin'
-//   parent: vm[i]
-//   location: location
-//   properties: {
-//     publisher: 'Microsoft.Compute'
-//     type: 'JsonADDomainExtension'
-//     typeHandlerVersion: '1.3'
-//     autoUpgradeMinorVersion: true
-//     settings: {
-//       name: adDomainFqdn
-//       ouPath: adOuPath
-//       user: domainJoinUsername
-//       restart: 'true'
-//       options: '3'
-//     }
-//     protectedSettings: {
-//       password: domainJoinPassword
-//     }
-//   }
-//   dependsOn: [
-//     avdAgentDscExtension[i]
-//   ]
-// }]
+resource dependencyAgentExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
+  name: 'DAExtension'
+  parent: vm[i]
+  location: location
+  properties: {
+    publisher: 'Microsoft.Azure.Monitoring.DependencyAgent'
+    type: 'DependencyAgentWindows'
+    typeHandlerVersion: '9.5'
+    autoUpgradeMinorVersion: true
+  }
+}]
 
-// resource dependencyAgentExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
-//   name: 'DAExtension'
-//   parent: vm[i]
-//   location: location
-//   properties: {
-//     publisher: 'Microsoft.Azure.Monitoring.DependencyAgent'
-//     type: 'DependencyAgentWindows'
-//     typeHandlerVersion: '9.5'
-//     autoUpgradeMinorVersion: true
-//   }
-// }]
-
-// resource antiMalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
-//   name: 'IaaSAntiMalware'
-//   parent: vm[i]
-//   location: location
-//   properties: {
-//     publisher: 'Microsoft.Azure.Security'
-//     type: 'IaaSAntimalware'
-//     typeHandlerVersion: '1.5'
-//     autoUpgradeMinorVersion: true
-//     settings: {
-//       AntimalwareEnabled: true
-//     }
-//   }
-// }]
-
-// resource ansibleExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
-//   name: 'AnsibleWinRM'
-//   parent: vm[i]
-//   location: location
-//   properties: {
-//     publisher: 'Microsoft.Compute'
-//     type: 'CustomScriptExtension'
-//     typeHandlerVersion: '1.10'
-//     autoUpgradeMinorVersion: true
-//     settings: {
-//       fileUris: [ 'https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1' ]
-//     }
-//     protectedSettings: {
-//       commandToExecute: 'powershell.exe -Command \'./ConfigureRemotingForAnsible.ps1; exit 0;\''
-//     }
-//   }
-// }]
+resource antiMalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
+  name: 'IaaSAntiMalware'
+  parent: vm[i]
+  location: location
+  properties: {
+    publisher: 'Microsoft.Azure.Security'
+    type: 'IaaSAntimalware'
+    typeHandlerVersion: '1.5'
+    autoUpgradeMinorVersion: true
+    settings: {
+      AntimalwareEnabled: true
+    }
+  }
+}]

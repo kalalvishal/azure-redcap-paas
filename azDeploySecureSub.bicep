@@ -49,6 +49,9 @@ param vmSku string
 @description('The amount of AVD instances to be deployed.')
 param countAVDInstances int
 
+param AADJoin bool = true
+param intune bool = false
+
 var sequenceFormatted = format('{0:00}', sequence)
 var rgNamingStructure = replace(replace(replace(replace(replace(namingConvention, '{rtype}', 'rg'), '{workloadName}', '${workloadName}-{rgName}'), '{loc}', location), '{seq}', sequenceFormatted), '{env}', environment)
 var vnetName = nameModule[0].outputs.shortName
@@ -59,8 +62,6 @@ var sqlName = nameModule[4].outputs.shortName
 var planName = nameModule[5].outputs.shortName
 var lawName = nameModule[6].outputs.shortName
 var avdName = nameModule[7].outputs.shortName
-var sqlAdmin = 'sqladmin'
-var sqlPassword = 'P@ssw0rd' // TODO: this should be linked to Key Vault secret.
 var avdVMAdmin = 'avdAdmin'
 var avdVMPassword = 'P@ssw0rd123!'
 var customRdpProperty = 'audiocapturemode:i:1;camerastoredirect:s:*;audiomode:i:0;drivestoredirect:s:;redirectclipboard:i:1;redirectcomports:i:0;redirectprinters:i:1;redirectsmartcards:i:1;screen mode id:i:2;devicestoredirect:s:*'
@@ -386,6 +387,8 @@ module avdModule './modules/avd/main.bicep' = {
     customRdpProperty: customRdpProperty
     ComputeSubnetId: virtualNetworkModule.outputs.subnets.ComputeSubnet.id
     countAVDInstances: countAVDInstances
+    AADJoin: AADJoin
+    intune: intune
     vmSku: vmSku
     tags: tags
   }

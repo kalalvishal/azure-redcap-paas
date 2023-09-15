@@ -18,6 +18,8 @@ param workspaceName string
 param customRdpProperty string
 param avdVMAdmin string
 param customTags object
+param AADJoin bool
+param intune bool
 
 @secure()
 param avdVMPassword string
@@ -56,7 +58,8 @@ module avdModule './avd.bicep' = {
     avdVMPassword: avdVMPassword
     vmDiskCachingType: vmDiskCachingType
     vmDiskType: vmDiskType
-    // tokenExpirationTime:
+    AADJoin: AADJoin
+    intune: intune
     maxSessionLimit: 5
     newBuild: true
     tags: tags
