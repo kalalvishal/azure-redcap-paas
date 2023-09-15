@@ -21,6 +21,7 @@ param location string
   'webApp' // Web App
   'plan' // App Service Plan
   'appi' // Application Insights
+  'law' // Log Analytics Workspace
   'avd' // Azure Virtual Desktop
 ])
 param resourceType string
@@ -95,6 +96,11 @@ var Defs = {
     alwaysRemoveSegmentSeparator: false
   }
   appi: {
+    lowerCase: false
+    maxLength: 260
+    alwaysRemoveSegmentSeparator: false
+  }
+  law: {
     lowerCase: false
     maxLength: 260
     alwaysRemoveSegmentSeparator: false

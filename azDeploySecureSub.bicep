@@ -24,8 +24,24 @@ param sequence int = 1
 @description('A valid Entra ID object ID, which will be assigned RBAC permissions on the deployed resources.')
 param identityObjectId string
 
-@description('The address space for the virtual network. Subnets will be carved out. Minimum IPv4 size: /24')
+@description('The address space for the virtual network. Subnets will be carved out. Minimum IPv4 size: /24.')
 param vnetAddressSpace string
+@description('If available, the public URL to download the REDCap zip file from. Used for debugging purposes. Does not need to be specified when downloading from the REDCap community using a username and password.')
+@secure()
+param redcapZipUrl string = ''
+@description('REDCap Community site username for downloading the REDCap zip file.')
+@secure()
+param redcapCommunityUsername string
+
+@description('REDCap Community site password for downloading the REDCap zip file.')
+@secure()
+param redcapCommunityPassword string
+
+@description('The password to use for the MySQL Flexible Server admin account \'sqladmin\'.')
+@secure()
+param sqlPassword string
+
+param sqlAdmin string = 'sqladmin'
 
 @description('The VM SKU that will be leveraged by AVD instances.')
 param vmSku string
@@ -41,7 +57,8 @@ var webAppName = nameModule[2].outputs.shortName
 var kvName = nameModule[3].outputs.shortName
 var sqlName = nameModule[4].outputs.shortName
 var planName = nameModule[5].outputs.shortName
-var avdName = nameModule[6].outputs.shortName
+var lawName = nameModule[6].outputs.shortName
+var avdName = nameModule[7].outputs.shortName
 var sqlAdmin = 'sqladmin'
 var sqlPassword = 'P@ssw0rd' // TODO: this should be linked to Key Vault secret.
 var avdVMAdmin = 'avdAdmin'
@@ -159,6 +176,14 @@ var secrets = [
     name: 'dbName'
     value: mySqlModule.outputs.databaseName
   }
+  {
+    name: 'redcapCommunityUsername'
+    value: redcapCommunityUsername
+  }
+  {
+    name: 'redcapCommunityPassword'
+    value: redcapCommunityPassword
+  }
 ]
 
 var workloads = [
@@ -168,6 +193,7 @@ var workloads = [
   'kv'
   'mysql'
   'plan'
+  'law'
   'avd'
 ]
 @batchSize(1)
@@ -208,6 +234,22 @@ module virtualNetworkModule './modules/networking/main.bicep' = {
     tags: tags
     customTags: {
       workloadType: 'networking'
+    }
+  }
+}
+
+module monitoring './modules/monitoring/main.bicep' = {
+  name: 'monitoring'
+  params: {
+    resourceGroupName: replace(rgNamingStructure, '{rgName}', 'monitoring')
+    appInsightsName: 'appInsights-${webAppName}'
+    logAnalyticsWorkspaceName: lawName
+    logAnalyticsWorkspaceSku: 'PerGB2018'
+    retentionInDays: 30
+    location: location
+    tags: tags
+    customTags: {
+      workloadType: 'monitoring'
     }
   }
 }
@@ -294,15 +336,16 @@ module webAppModule './modules/webapp/main.bicep' = {
   params: {
     resourceGroupName: replace(rgNamingStructure, '{rgName}', 'web')
     webAppName: webAppName
-    appServicePlan: planName
+    appServicePlanName: planName
     location: location
     // TODO: Consider deploying as P0V3 to ensure the deployment runs on a scale unit that supports P_v3 for future upgrades
     skuName: 'S1'
     skuTier: 'Standard'
     peSubnetId: virtualNetworkModule.outputs.subnets.ComputeSubnet.id
+    appInsights_connectionString: monitoring.outputs.appInsightsResourceId
+    appInsights_instrumentationKey: monitoring.outputs.appInsightsInstrumentationKey
     linuxFxVersion: 'php|8.2'
     tags: tags
-
     customTags: {
       workloadType: 'webApp'
     }
@@ -312,14 +355,13 @@ module webAppModule './modules/webapp/main.bicep' = {
     dbName: mySqlModule.outputs.databaseName
     dbPassword: kvSecretReferencesModule.outputs.keyVaultRefs[1]
     dbUserName: mySqlModule.outputs.sqlAdmin
-
+    redcapZipUrl: redcapZipUrl
+    redcapCommunityUsername: kvSecretReferencesModule.outputs.keyVaultRefs[4]
+    redcapCommunityPassword: kvSecretReferencesModule.outputs.keyVaultRefs[5]
     // Enable VNet integration
     integrationSubnetId: virtualNetworkModule.outputs.subnets.IntegrationSubnet.id
   }
 }
-
-// TODO: Consider outputting the web app URL
-
 
 module avdModule './modules/avd/main.bicep' = {
   name: 'AVDDeploy'
@@ -348,3 +390,6 @@ module avdModule './modules/avd/main.bicep' = {
     tags: tags
   }
 }
+
+// The web app URL
+output webAppUrl string = webAppModule.outputs.webAppUrl
