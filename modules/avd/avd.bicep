@@ -138,7 +138,7 @@ output appGroupName string = appGroupName
 // // Azure Virtual Desktop and Session Hosts region
 
 resource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = [for i in range(0, countAVDInstances): {
-  name: 'nic-redcap-${i}'
+  name: 'vm-redcap-${i}-nic'
   location: location
   properties: {
     ipConfigurations: [
