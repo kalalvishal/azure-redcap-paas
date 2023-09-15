@@ -49,6 +49,14 @@ param vmSku string
 @description('The amount of AVD instances to be deployed.')
 param countAVDInstances int
 
+@description('The admin username for the session hosts')
+param avdVMAdmin string
+
+@description('The password for the AVD session hosts')
+@secure()
+param avdVMPassword string
+
+
 param AADJoin bool = true
 param intune bool = false
 
@@ -64,8 +72,6 @@ var uamiName = nameModule[6].outputs.shortName
 var dplscrName = nameModule[7].outputs.shortName
 var lawName = nameModule[8].outputs.shortName
 var avdName = nameModule[9].outputs.shortName
-var avdVMAdmin = 'avdAdmin'
-var avdVMPassword = 'P@ssw0rd123!'
 var customRdpProperty = 'audiocapturemode:i:1;camerastoredirect:s:*;audiomode:i:0;drivestoredirect:s:;redirectclipboard:i:1;redirectcomports:i:0;redirectprinters:i:1;redirectsmartcards:i:1;screen mode id:i:2;devicestoredirect:s:*'
 
 var subnets = {

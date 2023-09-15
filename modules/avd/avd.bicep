@@ -3,6 +3,7 @@ param ComputeSubnetId string
 param countAVDInstances int
 param vmSku string
 param avdVMAdmin string
+@secure()
 param avdVMPassword string
 param vmDiskCachingType string
 param vmDiskType string
@@ -208,7 +209,24 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, 
   ]
 }]
 
-// Deploy the AVD agents to each session host
+resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
+  name: 'AADJoin'
+  parent: vm[i]
+  location: location
+  properties: AADJoin ? {
+    publisher: 'Microsoft.Azure.ActiveDirectory'
+    type: 'AADLoginForWindows'
+    typeHandlerVersion: '1.0'
+    autoUpgradeMinorVersion: true
+    settings: intune ? {
+      mdmId: '0000000a-0000-0000-c000-000000000000' //https://github.com/MicrosoftDocs/azure-docs/issues/94148
+    } : null
+  } : null
+  dependsOn: [
+    vm[i]
+  ]
+}]
+
 resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = [for i in range(0, countAVDInstances): {
   name: 'AvdAgentDSC'
   parent: vm[i]
@@ -228,25 +246,12 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
       }
     }
   }
-}]
-
-resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
-  name: 'AADJoin'
-  parent: vm[i]
-  location: location
-  properties: AADJoin ? {
-    publisher: 'Microsoft.Azure.ActiveDirectory'
-    type: 'AADLoginForWindows'
-    typeHandlerVersion: '1.0'
-    autoUpgradeMinorVersion: true
-    settings: intune ? {
-      mdmId: '0000000a-0000-0000-c000-000000000000' //https://github.com/MicrosoftDocs/azure-docs/issues/94148
-    } : null
-  } : null
   dependsOn: [
-    avdAgentDscExtension[i]
+    vm[i]
+    domainJoinExtension[i]
   ]
 }]
+
 
 resource dependencyAgentExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
   name: 'DAExtension'
@@ -258,6 +263,9 @@ resource dependencyAgentExtension 'Microsoft.Compute/virtualMachines/extensions@
     typeHandlerVersion: '9.5'
     autoUpgradeMinorVersion: true
   }
+  dependsOn: [
+    vm[i]
+  ]
 }]
 
 resource antiMalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, countAVDInstances): {
@@ -273,4 +281,7 @@ resource antiMalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2018
       AntimalwareEnabled: true
     }
   }
+  dependsOn: [
+    vm[i]
+  ]
 }]
