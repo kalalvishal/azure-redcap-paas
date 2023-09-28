@@ -8,6 +8,7 @@ Prerequisites
 
 - [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell?view=powershell-7.3)
 - [Az PowerShell module](https://learn.microsoft.com/powershell/azure/new-azureps-module-az?view=azps-10.3.0)
+- [Bicep tools](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install)
 
 To perform a manual deployment:
 

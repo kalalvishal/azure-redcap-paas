@@ -129,10 +129,6 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
 resource webSiteName_web 'Microsoft.Web/sites/sourcecontrols@2022-09-01' = {
   parent: webApp
   name: 'web'
-  location: location
-  tags: {
-    displayName: 'CodeDeploy'
-  }
   properties: {
     repoUrl: scmRepoUrl
     branch: scmRepoBranch
