@@ -4,29 +4,7 @@
 
 ### Manual deployment
 
-Prerequisites
-
-- [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell?view=powershell-7.3)
-- [Az PowerShell module](https://learn.microsoft.com/powershell/azure/new-azureps-module-az?view=azps-10.3.0)
-- [Bicep tools](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install)
-
-To perform a manual deployment:
-
-- Fork this repo to your own account and clone it, or simply clone this repo to an admin workstation.
-- Open the folder where you cloned the repo.
-- Copy `main-sample.bicepparam` to a new file with a descriptive name, such as `main-*yourorg*.bicepparam`.
-- Review and modify the parameter values.
-- Execute `deploy.ps1` as shown below.
-
-```PowerShell
-./deploy.ps1 -Location 'eastus' -TemplateParameterFile 'main-yourorg.bicepparam' -SubscriptionId 'subscription-id'
-```
-
-You may omit the parameter names and use them in the order `Location`, `TemplateParameterFile`, and `SubscriptionId`
-
-```PowerShell
-./deploy.ps1 'eastus' 'main-yourorg.bicepparam' 'subscription-id'
-```
+- To deploy Redcap manually using PowerShell, please click [here](manual.MD)
 
 ### CI/CD Deployment with GitHub
 
