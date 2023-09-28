@@ -18,7 +18,7 @@ Perform the following steps to deploy the solution using PowerShell:
     ```powershell
     git clone https://github.com/kalalvishal/azure-redcap-paas.git
     ```
-- Open the azure-redcap-paas folder in VSCode
+- Open the `azure-redcap-paas` folder in VSCode
 
 - Copy `main-sample.bicepparam` to a new file with a descriptive name, such as `main-*yourorg*.bicepparam`
 
@@ -45,4 +45,3 @@ Perform the following steps to deploy the solution using PowerShell:
     ```PowerShell
         ./deploy.ps1 'eastus' 'main-yourorg.bicepparam' 'subscription-id'
     ```
-    
